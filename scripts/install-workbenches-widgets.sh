@@ -7,7 +7,29 @@ home_dir="${HOME:?HOME is required}"
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 workbenches_root="${WORKBENCHES_ROOT:-$home_dir/projects/workBenches}"
 wsl_connection="${WAVE_WSL_CONNECTION:-wsl://Ubuntu-24.04}"
-waveterm_config_dir="${WAVETERM_CONFIG_DIR:-$home_dir/.config/waveterm}"
+
+is_wsl() {
+    [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null
+}
+
+default_waveterm_config_dir() {
+    if is_wsl && command -v powershell.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+        local windows_profile
+        local wsl_profile
+        windows_profile="$(powershell.exe -NoProfile -Command '[Environment]::GetFolderPath("UserProfile")' 2>/dev/null | tr -d '\r' || true)"
+        if [[ -n "$windows_profile" ]]; then
+            wsl_profile="$(wslpath -u "$windows_profile" 2>/dev/null || true)"
+            if [[ -n "$wsl_profile" ]]; then
+                printf '%s\n' "$wsl_profile/.config/waveterm"
+                return
+            fi
+        fi
+    fi
+
+    printf '%s\n' "$home_dir/.config/waveterm"
+}
+
+waveterm_config_dir="${WAVETERM_CONFIG_DIR:-$(default_waveterm_config_dir)}"
 
 usage() {
     cat <<'EOF'
@@ -16,7 +38,7 @@ Usage: install-workbenches-widgets.sh [options]
 Options:
   --workbenches-root PATH  workBenches checkout path
   --wsl-connection URI     Wave WSL connection URI (default: wsl://Ubuntu-24.04)
-  --waveterm-config PATH   Wave config directory (default: ~/.config/waveterm)
+  --waveterm-config PATH   Wave config directory (default: Windows Wave config on WSL, otherwise ~/.config/waveterm)
   -h, --help               Show this help
 EOF
 }

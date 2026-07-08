@@ -21,7 +21,11 @@ The installer:
 
 - copies `bin/wave-container-shell.sh` into `workBenches/scripts/`
 - renders the widget template with your workBenches path and WSL connection
-- merges the workBench widget definitions into `~/.config/waveterm/widgets.json`
+- merges the workBench widget definitions into Wave's `widgets.json`
+
+On WSL, the installer writes to the Windows user's Wave config directory, for
+example `/mnt/c/Users/<you>/.config/waveterm/widgets.json`. On native Linux, it
+uses `~/.config/waveterm/widgets.json`.
 
 Restart Wave Terminal or reload its widget list, then open one of the workBench
 widgets.
