@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Install or update the workBenches Wave widgets.
+
+set -euo pipefail
+
+home_dir="${HOME:?HOME is required}"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+workbenches_root="${WORKBENCHES_ROOT:-$home_dir/projects/workBenches}"
+wsl_connection="${WAVE_WSL_CONNECTION:-wsl://Ubuntu-24.04}"
+waveterm_config_dir="${WAVETERM_CONFIG_DIR:-$home_dir/.config/waveterm}"
+
+usage() {
+    cat <<'EOF'
+Usage: install-workbenches-widgets.sh [options]
+
+Options:
+  --workbenches-root PATH  workBenches checkout path
+  --wsl-connection URI     Wave WSL connection URI (default: wsl://Ubuntu-24.04)
+  --waveterm-config PATH   Wave config directory (default: ~/.config/waveterm)
+  -h, --help               Show this help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --workbenches-root) workbenches_root="$2"; shift 2 ;;
+        --wsl-connection) wsl_connection="$2"; shift 2 ;;
+        --waveterm-config) waveterm_config_dir="$2"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        --*) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+        *) echo "Unexpected argument: $1" >&2; usage >&2; exit 1 ;;
+    esac
+done
+
+if [[ ! -d "$workbenches_root" ]]; then
+    echo "workBenches root does not exist: $workbenches_root" >&2
+    exit 1
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 is required to merge Wave widget JSON." >&2
+    exit 1
+fi
+
+workbenches_root="$(cd "$workbenches_root" && pwd)"
+mkdir -p "$workbenches_root/scripts" "$waveterm_config_dir"
+
+install -m 755 "$repo_dir/bin/wave-container-shell.sh" "$workbenches_root/scripts/wave-container-shell.sh"
+
+template_file="$repo_dir/templates/workbenches.widgets.json"
+widgets_file="$waveterm_config_dir/widgets.json"
+
+python3 - "$template_file" "$widgets_file" "$workbenches_root" "$wsl_connection" <<'PY'
+import json
+import pathlib
+import sys
+
+template_path, widgets_path, workbenches_root, wsl_connection = sys.argv[1:]
+
+template_text = pathlib.Path(template_path).read_text(encoding="utf-8")
+template_text = template_text.replace("__WORKBENCHES_ROOT__", workbenches_root)
+template_text = template_text.replace("__WSL_CONNECTION__", wsl_connection)
+incoming = json.loads(template_text)
+
+path = pathlib.Path(widgets_path)
+if path.exists() and path.stat().st_size:
+    existing = json.loads(path.read_text(encoding="utf-8"))
+else:
+    existing = {}
+
+if not isinstance(existing, dict):
+    raise SystemExit(f"{widgets_path} must contain a JSON object")
+
+existing.update(incoming)
+path.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+PY
+
+echo "Installed launcher: $workbenches_root/scripts/wave-container-shell.sh"
+echo "Updated widgets: $widgets_file"
+echo "WSL connection: $wsl_connection"

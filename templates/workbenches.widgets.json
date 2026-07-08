@@ -1,0 +1,62 @@
+{
+  "pyBench": {
+    "icon": "brands@python",
+    "label": "pyBench",
+    "description": "Open the py-bench container shell",
+    "blockdef": {
+      "meta": {
+        "view": "term",
+        "controller": "shell",
+        "frame:title": "pyBench",
+        "connection": "__WSL_CONNECTION__",
+        "cmd:cwd": "__WORKBENCHES_ROOT__",
+        "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title pyBench py-bench"
+      }
+    }
+  },
+  "flutterBench": {
+    "icon": "smartphone",
+    "label": "flutterBench",
+    "description": "Open the flutter-bench container shell",
+    "blockdef": {
+      "meta": {
+        "view": "term",
+        "controller": "shell",
+        "frame:title": "flutterBench",
+        "connection": "__WSL_CONNECTION__",
+        "cmd:cwd": "__WORKBENCHES_ROOT__",
+        "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title flutterBench flutterBench"
+      }
+    }
+  },
+  "cppBench": {
+    "icon": "file-code",
+    "label": "C++Bench",
+    "description": "Open the cpp-bench container shell",
+    "blockdef": {
+      "meta": {
+        "view": "term",
+        "controller": "shell",
+        "frame:title": "C++Bench",
+        "connection": "__WSL_CONNECTION__",
+        "cmd:cwd": "__WORKBENCHES_ROOT__",
+        "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title C++Bench C++Bench"
+      }
+    }
+  },
+  "cloudBench": {
+    "icon": "cloud",
+    "label": "cloudBench",
+    "description": "Open the cloud-bench container shell",
+    "blockdef": {
+      "meta": {
+        "view": "term",
+        "controller": "shell",
+        "frame:title": "cloudBench",
+        "connection": "__WSL_CONNECTION__",
+        "cmd:cwd": "__WORKBENCHES_ROOT__",
+        "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title cloudBench cloudBench"
+      }
+    }
+  }
+}
