@@ -1,4 +1,30 @@
 {
+  "defwidget@terminal": {
+    "display:order": -5,
+    "icon": "square-terminal",
+    "label": "terminal",
+    "description": "Open the default WSL distro connection",
+    "blockdef": {
+      "meta": {
+        "view": "term",
+        "controller": "shell",
+        "connection": "__WSL_CONNECTION__"
+      }
+    }
+  },
+  "projects": {
+    "display:order": -4,
+    "icon": "folder",
+    "label": "projects",
+    "description": "Open the WSL projects directory",
+    "blockdef": {
+      "meta": {
+        "view": "preview",
+        "connection": "__WSL_CONNECTION__",
+        "file": "__PROJECTS_ROOT__"
+      }
+    }
+  },
   "pyBench": {
     "icon": "brands@python",
     "label": "pyBench",
@@ -15,7 +41,7 @@
     }
   },
   "flutterBench": {
-    "icon": "smartphone",
+    "icon": "brands@flutter",
     "label": "flutterBench",
     "description": "Open the flutter-bench container shell",
     "blockdef": {

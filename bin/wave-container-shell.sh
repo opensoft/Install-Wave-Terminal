@@ -34,8 +34,8 @@ resolve_bench_defaults() {
             ;;
         cloudBench|cloud-bench)
             container="cloud-bench"
-            bench_dir="$workbenches_root/sysBenches/cloudBench"
-            compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            bench_dir="$workbenches_root/sysBenches/cloudBench/devcontainer.example"
+            compose_file="$bench_dir/docker-compose.yml"
             ;;
     esac
 }
@@ -86,14 +86,23 @@ fi
 
 run_devcontainer_up() {
     local remove_flag=()
+    local devcontainer_timeout="${WAVE_DEVCONTAINER_UP_TIMEOUT:-25s}"
     if [[ "${1:-}" == "--remove-existing-container" ]]; then
         remove_flag=(--remove-existing-container)
     fi
 
+    run_with_timeout() {
+        if command -v timeout >/dev/null 2>&1; then
+            timeout --foreground "$devcontainer_timeout" "$@"
+        else
+            "$@"
+        fi
+    }
+
     if command -v devcontainer >/dev/null 2>&1; then
-        devcontainer up --workspace-folder "$bench_dir" "${remove_flag[@]}"
+        run_with_timeout devcontainer up --workspace-folder "$bench_dir" "${remove_flag[@]}"
     elif command -v npx >/dev/null 2>&1; then
-        npx -y @devcontainers/cli up --workspace-folder "$bench_dir" "${remove_flag[@]}"
+        run_with_timeout npx -y @devcontainers/cli up --workspace-folder "$bench_dir" "${remove_flag[@]}"
     else
         return 127
     fi
@@ -103,9 +112,17 @@ ensure_host_sources() {
     mkdir -p \
         "$home_dir/projects" \
         "$home_dir/.ssh" \
+        "$home_dir/.azure" \
+        "$home_dir/.aws" \
+        "$home_dir/.kube" \
         "$home_dir/.config/gh" \
         "$home_dir/.claude" \
+        "$home_dir/.claude-profiles" \
         "$home_dir/.codex" \
+        "$home_dir/.chatgpt-profiles" \
+        "$home_dir/.gemini-profiles" \
+        "$home_dir/.grok-profiles" \
+        "$home_dir/.glm-profiles" \
         "$home_dir/.omnigent" \
         "$home_dir/.agents" \
         "$home_dir/.pi" \
@@ -143,9 +160,17 @@ services:
       - ${home_dir}/.gitconfig:/home/${container_user}/.gitconfig:ro
       - ${home_dir}/.ssh:/home/${container_user}/.ssh:ro
       - ${home_dir}/.config/gh:/home/${container_user}/.config/gh:ro
+      - ${home_dir}/.azure:/home/${container_user}/.azure:ro
+      - ${home_dir}/.aws:/home/${container_user}/.aws:ro
+      - ${home_dir}/.kube:/home/${container_user}/.kube:ro
       - ${home_dir}/.claude:/home/${container_user}/.claude:cached
       - ${home_dir}/.claude.json:/home/${container_user}/.claude.json:cached
+      - ${home_dir}/.claude-profiles:/home/${container_user}/.claude-profiles:cached
       - ${home_dir}/.codex:/home/${container_user}/.codex:cached
+      - ${home_dir}/.chatgpt-profiles:/home/${container_user}/.chatgpt-profiles:cached
+      - ${home_dir}/.gemini-profiles:/home/${container_user}/.gemini-profiles:cached
+      - ${home_dir}/.grok-profiles:/home/${container_user}/.grok-profiles:cached
+      - ${home_dir}/.glm-profiles:/home/${container_user}/.glm-profiles:cached
       - ${home_dir}/.omnigent:/home/${container_user}/.omnigent:cached
       - ${home_dir}/.agents:/home/${container_user}/.agents:cached
       - ${home_dir}/.pi:/home/${container_user}/.pi:cached
@@ -187,6 +212,12 @@ create_with_compose() {
     docker compose -f "$compose_file" -f "$override_file" up -d "$container"
 }
 
+recreate_with_compose() {
+    echo "Recreating $container with Wave compose mounts..."
+    docker rm -f "$container" >/dev/null 2>&1 || true
+    create_with_compose
+}
+
 mount_destination_covers() {
     local mount_destination="$1"
     local required_path="$2"
@@ -199,23 +230,17 @@ container_missing_required_mounts() {
     mount_destinations="$(docker container inspect -f '{{range .Mounts}}{{println .Destination}}{{end}}' "$container" 2>/dev/null || true)"
 
     local required_mounts=()
-    case "$container" in
-        cloud-bench)
-            required_mounts=(
-                "/workspace"
-                "/home/${container_user}"
-                "/var/run/docker.sock"
-            )
-            ;;
-        *)
-            required_mounts=(
-                "/workspace/projects"
-                "/home/${container_user}/.zshrc"
-                "/home/${container_user}/.oh-my-zsh"
-                "/home/${container_user}/.p10k.zsh"
-            )
-            ;;
-    esac
+    required_mounts=(
+        "/workspace/projects"
+        "/home/${container_user}/.zshrc"
+        "/home/${container_user}/.oh-my-zsh"
+        "/home/${container_user}/.p10k.zsh"
+        "/home/${container_user}/.claude-profiles"
+        "/home/${container_user}/.chatgpt-profiles"
+        "/home/${container_user}/.gemini-profiles"
+        "/home/${container_user}/.grok-profiles"
+        "/home/${container_user}/.glm-profiles"
+    )
 
     local mount
     local destination
@@ -239,17 +264,16 @@ container_missing_required_mounts() {
 if ! docker container inspect "$container" >/dev/null 2>&1; then
     if [[ -f "$bench_dir/.devcontainer/devcontainer.json" ]]; then
         echo "Creating $container with Dev Containers CLI..."
-        run_devcontainer_up || create_with_compose
+        if ! run_devcontainer_up; then
+            echo "Dev Containers CLI did not complete; creating $container with Wave compose mounts." >&2
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            create_with_compose
+        fi
     else
         create_with_compose
     fi
 elif [[ -f "$bench_dir/.devcontainer/devcontainer.json" ]] && container_missing_required_mounts; then
-    echo "Recreating $container with Dev Containers CLI so required mounts are applied..."
-    if ! run_devcontainer_up --remove-existing-container; then
-        echo "Dev Containers CLI failed; recreating $container with Wave compose mounts." >&2
-        docker rm -f "$container" >/dev/null 2>&1 || true
-        create_with_compose
-    fi
+    recreate_with_compose
 fi
 
 if [[ "$(docker container inspect -f '{{.State.Running}}' "$container")" != "true" ]]; then
@@ -257,8 +281,39 @@ if [[ "$(docker container inspect -f '{{.State.Running}}' "$container")" != "tru
     docker start "$container" >/dev/null
 fi
 
+install_ai_profile_launchers() {
+    local claude_launcher="$workbenches_root/base-image/files/claude-profile"
+    local codex_launcher="$workbenches_root/base-image/files/codex-profile"
+    local provider_launcher="$workbenches_root/base-image/files/provider-profile"
+    [[ -f "$claude_launcher" ]] || return 0
+
+    docker cp "$claude_launcher" "$container:/usr/local/bin/claude-profile"
+    docker exec --user root "$container" sh -c \
+        'chmod 0755 /usr/local/bin/claude-profile && ln -sfn claude-profile /usr/local/bin/pclaude'
+    if [[ -f "$codex_launcher" ]]; then
+        docker cp "$codex_launcher" "$container:/usr/local/bin/codex-profile"
+        docker exec --user root "$container" sh -c \
+            'chmod 0755 /usr/local/bin/codex-profile && ln -sfn codex-profile /usr/local/bin/pcodex'
+    fi
+    if [[ -f "$provider_launcher" ]]; then
+        docker cp "$provider_launcher" "$container:/usr/local/bin/provider-profile"
+        docker exec --user root "$container" sh -c \
+            'chmod 0755 /usr/local/bin/provider-profile
+             for name in gemini-profile pgemini grok-profile pgrok glm-profile zai-profile pglm pzai; do
+               ln -sfn provider-profile "/usr/local/bin/$name"
+             done'
+    fi
+    docker exec --user root "$container" sh -c \
+        "mkdir -p '/home/${container_user}/.local/bin' && chown '${container_user}:${container_user}' '/home/${container_user}/.local' '/home/${container_user}/.local/bin'"
+    docker exec --user "$container_user" "$container" sh -c \
+        'if [ ! -e "$HOME/.local/bin/claude" ]; then ln -s /usr/local/bin/claude "$HOME/.local/bin/claude"; fi'
+}
+
+install_ai_profile_launchers
+
 if [[ "$check_only" == true ]]; then
-    docker exec --user "$container_user" --workdir "$workdir" "$container" "$shell_path" -lc 'printf "%s\n" "wave-container-shell-ok"; whoami; pwd'
+    docker exec --user "$container_user" --workdir "$workdir" "$container" "$shell_path" -lc \
+        'printf "%s\n" "wave-container-shell-ok"; whoami; pwd; command -v claude-profile; command -v pclaude; command -v codex-profile; command -v pcodex; command -v pgemini; command -v pgrok; command -v pglm; test -d "$HOME/.claude-profiles"; test -d "$HOME/.chatgpt-profiles"; test -d "$HOME/.gemini-profiles"; test -d "$HOME/.grok-profiles"; test -d "$HOME/.glm-profiles"'
     exit 0
 fi
 

@@ -2,6 +2,19 @@
 
 This document records the Wave Terminal widget setup for OpenSoft workBenches.
 
+The installer also overrides Wave's built-in terminal widget so the default
+terminal button opens the configured WSL connection instead of PowerShell on
+Windows.
+
+It also adds a `projects` files widget rooted at the configured projects
+directory. The default root is `$HOME/projects`.
+
+## workBenches Setup Integration
+
+The root `workBenches/setup.sh` invokes this installer before Docker image
+builds. That makes the Wave `terminal`, `projects`, and container widgets part
+of the shared workBenches setup instead of a one-off manual workstation step.
+
 ## Widget Contract
 
 Wave launches each widget in WSL, then the widget init script replaces the WSL
@@ -18,6 +31,32 @@ That keeps the Wave block title aligned with the widget label.
 
 ## Widgets
 
+### Default Terminal
+
+- Widget key: `defwidget@terminal`
+- Label: `terminal`
+- Icon: `square-terminal`
+- Connection: `wsl://Ubuntu-24.04` by default
+
+Wave uses the `defwidget@terminal` key to override its built-in terminal widget.
+The installer renders that key with the selected `--wsl-connection`, so the
+standard terminal widget opens Ubuntu 24.04 WSL instead of the Windows default
+shell.
+
+### projects
+
+- Widget key: `projects`
+- Label: `projects`
+- Icon: `folder`
+- View: `preview`
+- Connection: `wsl://Ubuntu-24.04` by default
+- File root: `$HOME/projects` by default
+
+The installer renders the `projects` widget with the selected
+`--wsl-connection` and `--projects-root`. On Brett's workstation this resolves
+to `wsl://Ubuntu-24.04` and `/home/brett/projects`, so the files widget browses
+the WSL projects directory instead of the Windows filesystem.
+
 ### pyBench
 
 - Widget key: `pyBench`
@@ -31,7 +70,7 @@ That keeps the Wave block title aligned with the widget label.
 
 - Widget key: `flutterBench`
 - Label: `flutterBench`
-- Icon: `smartphone`
+- Icon: `brands@flutter`
 - Container: `flutter-bench`
 - Bench directory: `devBenches/flutterBench`
 - Compose file: `devBenches/flutterBench/.devcontainer/docker-compose.yml`
@@ -79,6 +118,18 @@ requirements.
 
 ## Troubleshooting
 
+### Default Terminal Still Opens PowerShell
+
+Confirm the built-in terminal override exists in Wave's Windows-side config:
+
+```bash
+jq '."defwidget@terminal".blockdef.meta.connection' /mnt/c/Users/<you>/.config/waveterm/widgets.json
+```
+
+It should print `wsl://Ubuntu-24.04` unless a different connection was passed to
+`--wsl-connection`. Restart Wave Terminal or reload the widget list after
+installing.
+
 ### Widget Opens WSL Instead of The Container
 
 That usually means the widget ran without replacing the WSL shell. Confirm the
@@ -111,10 +162,15 @@ If not, run:
 
 The launcher will recreate a container that is missing required mounts.
 
-### Dev Containers CLI Fails
+### Dev Containers CLI Fails Or Hangs
 
-The launcher tries the Dev Containers CLI first for benches with
-`.devcontainer/devcontainer.json`. If that fails, it falls back to Docker Compose
-with a generated override. The fallback is enough for Wave widget shells, but
-the failing devcontainer command should still be fixed in the workBenches repo
-when VS Code parity matters.
+For first creation, the launcher tries the Dev Containers CLI for benches with
+`.devcontainer/devcontainer.json`, but only for a short timeout. If it fails or
+hangs, the launcher removes any half-created container and falls back to Docker
+Compose with a generated Wave override.
+
+For existing containers that are missing required mounts, the launcher skips the
+Dev Containers CLI and recreates the container directly with the Wave compose
+override. The fallback is enough for Wave widget shells, but a broken
+devcontainer command should still be fixed in the workBenches repo when VS Code
+parity matters.
