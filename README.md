@@ -15,6 +15,7 @@ cd Install-Wave-Terminal
 ./scripts/install-workbenches-widgets.sh \
   --workbenches-root "$HOME/projects/workBenches" \
   --projects-root "$HOME/projects" \
+  --font-size 16 \
   --wsl-connection "wsl://Ubuntu-24.04"
 ```
 
@@ -26,6 +27,7 @@ The installer:
 - overrides Wave's built-in `terminal` widget so it opens the WSL connection
   instead of the Windows default shell
 - adds a `projects` files widget rooted at the selected projects directory
+- sets widget terminal, editor, and markdown font sizes to 16 by default
 - ensures the WSL connection exists in Wave's `connections.json` with WSH
   enabled
 
@@ -69,6 +71,11 @@ configured WSL distro instead of PowerShell on Windows.
 The `projects` widget uses `view: preview`, the configured WSL connection, and
 `file: <projects root>`. By default, the projects root is `$HOME/projects`; pass
 `--projects-root` to render a different directory.
+
+Widget font size defaults to `16`. Terminal widgets receive `term:fontsize`;
+the `projects` files widget receives `editor:fontsize`, `markdown:fontsize`,
+and `markdown:fixedfontsize`. Pass `--font-size` or set
+`WAVE_WIDGET_FONT_SIZE` to use a different value.
 
 The workBench container widgets also use:
 

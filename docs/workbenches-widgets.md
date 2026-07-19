@@ -9,6 +9,10 @@ Windows.
 It also adds a `projects` files widget rooted at the configured projects
 directory. The default root is `$HOME/projects`.
 
+All generated widgets use a default font size of `16`. Terminal widgets set
+`term:fontsize`; the `projects` files widget sets `editor:fontsize`,
+`markdown:fontsize`, and `markdown:fixedfontsize`.
+
 ## workBenches Setup Integration
 
 The root `workBenches/setup.sh` invokes this installer before Docker image
@@ -37,6 +41,7 @@ That keeps the Wave block title aligned with the widget label.
 - Label: `terminal`
 - Icon: `square-terminal`
 - Connection: `wsl://Ubuntu-24.04` by default
+- Font size: `16`
 
 Wave uses the `defwidget@terminal` key to override its built-in terminal widget.
 The installer renders that key with the selected `--wsl-connection`, so the
@@ -51,6 +56,7 @@ shell.
 - View: `preview`
 - Connection: `wsl://Ubuntu-24.04` by default
 - File root: `$HOME/projects` by default
+- Font size: `16`
 
 The installer renders the `projects` widget with the selected
 `--wsl-connection` and `--projects-root`. On Brett's workstation this resolves

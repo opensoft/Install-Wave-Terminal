@@ -8,7 +8,8 @@
       "meta": {
         "view": "term",
         "controller": "shell",
-        "connection": "__WSL_CONNECTION__"
+        "connection": "__WSL_CONNECTION__",
+        "term:fontsize": __WAVE_WIDGET_FONT_SIZE__
       }
     }
   },
@@ -21,7 +22,10 @@
       "meta": {
         "view": "preview",
         "connection": "__WSL_CONNECTION__",
-        "file": "__PROJECTS_ROOT__"
+        "file": "__PROJECTS_ROOT__",
+        "editor:fontsize": __WAVE_WIDGET_FONT_SIZE__,
+        "markdown:fontsize": __WAVE_WIDGET_FONT_SIZE__,
+        "markdown:fixedfontsize": __WAVE_WIDGET_FONT_SIZE__
       }
     }
   },
@@ -35,6 +39,7 @@
         "controller": "shell",
         "frame:title": "pyBench",
         "connection": "__WSL_CONNECTION__",
+        "term:fontsize": __WAVE_WIDGET_FONT_SIZE__,
         "cmd:cwd": "__WORKBENCHES_ROOT__",
         "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title pyBench py-bench"
       }
@@ -50,6 +55,7 @@
         "controller": "shell",
         "frame:title": "flutterBench",
         "connection": "__WSL_CONNECTION__",
+        "term:fontsize": __WAVE_WIDGET_FONT_SIZE__,
         "cmd:cwd": "__WORKBENCHES_ROOT__",
         "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title flutterBench flutterBench"
       }
@@ -65,6 +71,7 @@
         "controller": "shell",
         "frame:title": "C++Bench",
         "connection": "__WSL_CONNECTION__",
+        "term:fontsize": __WAVE_WIDGET_FONT_SIZE__,
         "cmd:cwd": "__WORKBENCHES_ROOT__",
         "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title C++Bench C++Bench"
       }
@@ -80,6 +87,7 @@
         "controller": "shell",
         "frame:title": "cloudBench",
         "connection": "__WSL_CONNECTION__",
+        "term:fontsize": __WAVE_WIDGET_FONT_SIZE__,
         "cmd:cwd": "__WORKBENCHES_ROOT__",
         "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title cloudBench cloudBench"
       }

@@ -8,6 +8,7 @@ repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 workbenches_root="${WORKBENCHES_ROOT:-$home_dir/projects/workBenches}"
 projects_root="${PROJECTS_ROOT:-$home_dir/projects}"
 wsl_connection="${WAVE_WSL_CONNECTION:-wsl://Ubuntu-24.04}"
+font_size="${WAVE_WIDGET_FONT_SIZE:-16}"
 
 is_wsl() {
     [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null
@@ -40,6 +41,7 @@ Options:
   --workbenches-root PATH  workBenches checkout path
   --projects-root PATH     Projects directory for the Wave files widget (default: ~/projects)
   --wsl-connection URI     Wave WSL connection URI (default: wsl://Ubuntu-24.04)
+  --font-size POINTS       Widget font size (default: 16)
   --waveterm-config PATH   Wave config directory (default: Windows Wave config on WSL, otherwise ~/.config/waveterm)
   -h, --help               Show this help
 EOF
@@ -50,6 +52,7 @@ while [[ $# -gt 0 ]]; do
         --workbenches-root) workbenches_root="$2"; shift 2 ;;
         --projects-root) projects_root="$2"; shift 2 ;;
         --wsl-connection) wsl_connection="$2"; shift 2 ;;
+        --font-size) font_size="$2"; shift 2 ;;
         --waveterm-config) waveterm_config_dir="$2"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         --*) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
@@ -67,6 +70,11 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
+if [[ ! "$font_size" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    echo "font size must be a number: $font_size" >&2
+    exit 1
+fi
+
 workbenches_root="$(cd "$workbenches_root" && pwd)"
 mkdir -p "$workbenches_root/scripts" "$projects_root" "$waveterm_config_dir"
 projects_root="$(cd "$projects_root" && pwd)"
@@ -77,12 +85,12 @@ template_file="$repo_dir/templates/workbenches.widgets.json"
 widgets_file="$waveterm_config_dir/widgets.json"
 connections_file="$waveterm_config_dir/connections.json"
 
-python3 - "$template_file" "$widgets_file" "$connections_file" "$workbenches_root" "$projects_root" "$wsl_connection" <<'PY'
+python3 - "$template_file" "$widgets_file" "$connections_file" "$workbenches_root" "$projects_root" "$wsl_connection" "$font_size" <<'PY'
 import json
 import pathlib
 import sys
 
-template_path, widgets_path, connections_path, workbenches_root, projects_root, wsl_connection = sys.argv[1:]
+template_path, widgets_path, connections_path, workbenches_root, projects_root, wsl_connection, font_size = sys.argv[1:]
 
 
 def read_json_object(path_text):
@@ -101,6 +109,7 @@ template_text = pathlib.Path(template_path).read_text(encoding="utf-8")
 template_text = template_text.replace("__WORKBENCHES_ROOT__", workbenches_root)
 template_text = template_text.replace("__PROJECTS_ROOT__", projects_root)
 template_text = template_text.replace("__WSL_CONNECTION__", wsl_connection)
+template_text = template_text.replace("__WAVE_WIDGET_FONT_SIZE__", font_size)
 incoming = json.loads(template_text)
 
 widgets_file, widgets = read_json_object(widgets_path)
@@ -123,4 +132,5 @@ echo "Installed launcher: $workbenches_root/scripts/wave-container-shell.sh"
 echo "Updated widgets: $widgets_file"
 echo "Updated connections: $connections_file"
 echo "Projects widget root: $projects_root"
+echo "Widget font size: $font_size"
 echo "WSL connection: $wsl_connection"
