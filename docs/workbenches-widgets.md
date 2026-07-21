@@ -98,7 +98,7 @@ The C++ container needs the shell config mounts for Powerlevel10k:
 - `~/.zshrc`
 - `~/.oh-my-zsh`
 - `~/.p10k.zsh`
-- `~/.zsh_history`
+- `~/.workbenches-history/` with `HISTFILE=~/.workbenches-history/.zsh_history`
 
 The launcher checks for the required mounts and recreates the container if an
 older compose-only container is missing them.
