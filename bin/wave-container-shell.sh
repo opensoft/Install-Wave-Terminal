@@ -91,6 +91,11 @@ if ! command -v docker >/dev/null 2>&1; then
     exit 1
 fi
 
+if [[ "$check_only" != true ]]; then
+    printf '\033]0;%s\007' "$block_title"
+    echo "Opening '$block_title' container shell..."
+fi
+
 run_devcontainer_up() {
     local remove_flag=()
     local devcontainer_timeout="${WAVE_DEVCONTAINER_UP_TIMEOUT:-25s}"
@@ -304,6 +309,30 @@ install_ai_profile_launchers() {
     local pi_launcher="$workbenches_root/base-image/files/pi-profile"
     [[ -f "$claude_launcher" ]] || return 0
 
+    local marker="/usr/local/share/workbenches/profile-launchers.sha256"
+    local launchers=(
+        "$claude_launcher"
+        "$codex_launcher"
+        "$provider_launcher"
+        "$pi_launcher"
+    )
+    local bundle_hash
+    bundle_hash="$(
+        for launcher in "${launchers[@]}"; do
+            if [[ -f "$launcher" ]]; then
+                sha256sum "$launcher" | awk '{print $1}'
+            else
+                printf '%s\n' missing
+            fi
+        done | sha256sum | awk '{print $1}'
+    )"
+
+    local installed_hash
+    installed_hash="$(docker exec --user root "$container" sh -c "cat '$marker' 2>/dev/null" || true)"
+    if [[ "$installed_hash" == "$bundle_hash" ]]; then
+        return 0
+    fi
+
     docker cp "$claude_launcher" "$container:/usr/local/bin/claude-profile"
     docker exec --user root "$container" sh -c \
         'chmod 0755 /usr/local/bin/claude-profile && ln -sfn claude-profile /usr/local/bin/pclaude'
@@ -329,6 +358,8 @@ install_ai_profile_launchers() {
         "mkdir -p '/home/${container_user}/.local/bin' && chown '${container_user}:${container_user}' '/home/${container_user}/.local' '/home/${container_user}/.local/bin'"
     docker exec --user "$container_user" "$container" sh -c \
         'if [ ! -e "$HOME/.local/bin/claude" ]; then ln -s /usr/local/bin/claude "$HOME/.local/bin/claude"; fi'
+    docker exec --user root "$container" sh -c \
+        "mkdir -p '$(dirname "$marker")' && printf '%s\n' '$bundle_hash' > '$marker'"
 }
 
 ensure_container_history
