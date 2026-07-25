@@ -77,6 +77,22 @@
       }
     }
   },
+  "rustBench": {
+    "icon": "brands@rust",
+    "label": "rustBench",
+    "description": "Open the rust-bench container shell",
+    "blockdef": {
+      "meta": {
+        "view": "term",
+        "controller": "shell",
+        "frame:title": "rustBench",
+        "connection": "__WSL_CONNECTION__",
+        "term:fontsize": __WAVE_WIDGET_FONT_SIZE__,
+        "cmd:cwd": "__WORKBENCHES_ROOT__",
+        "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title rustBench rustBench"
+      }
+    }
+  },
   "cloudBench": {
     "icon": "cloud",
     "label": "cloudBench",

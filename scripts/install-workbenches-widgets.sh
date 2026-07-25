@@ -9,6 +9,7 @@ workbenches_root="${WORKBENCHES_ROOT:-$home_dir/projects/workBenches}"
 projects_root="${PROJECTS_ROOT:-$home_dir/projects}"
 wsl_connection="${WAVE_WSL_CONNECTION:-wsl://Ubuntu-24.04}"
 font_size="${WAVE_WIDGET_FONT_SIZE:-16}"
+install_launcher=true
 
 is_wsl() {
     [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null
@@ -43,6 +44,7 @@ Options:
   --wsl-connection URI     Wave WSL connection URI (default: wsl://Ubuntu-24.04)
   --font-size POINTS       Widget font size (default: 16)
   --waveterm-config PATH   Wave config directory (default: Windows Wave config on WSL, otherwise ~/.config/waveterm)
+  --skip-launcher          Update Wave config without replacing the workBenches launcher
   -h, --help               Show this help
 EOF
 }
@@ -54,6 +56,7 @@ while [[ $# -gt 0 ]]; do
         --wsl-connection) wsl_connection="$2"; shift 2 ;;
         --font-size) font_size="$2"; shift 2 ;;
         --waveterm-config) waveterm_config_dir="$2"; shift 2 ;;
+        --skip-launcher) install_launcher=false; shift ;;
         -h|--help) usage; exit 0 ;;
         --*) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
         *) echo "Unexpected argument: $1" >&2; usage >&2; exit 1 ;;
@@ -79,7 +82,9 @@ workbenches_root="$(cd "$workbenches_root" && pwd)"
 mkdir -p "$workbenches_root/scripts" "$projects_root" "$waveterm_config_dir"
 projects_root="$(cd "$projects_root" && pwd)"
 
-install -m 755 "$repo_dir/bin/wave-container-shell.sh" "$workbenches_root/scripts/wave-container-shell.sh"
+if [[ "$install_launcher" == true ]]; then
+    install -m 755 "$repo_dir/bin/wave-container-shell.sh" "$workbenches_root/scripts/wave-container-shell.sh"
+fi
 
 template_file="$repo_dir/templates/workbenches.widgets.json"
 widgets_file="$waveterm_config_dir/widgets.json"
@@ -128,7 +133,11 @@ else:
 connections_file.write_text(json.dumps(connections, indent=2) + "\n", encoding="utf-8")
 PY
 
-echo "Installed launcher: $workbenches_root/scripts/wave-container-shell.sh"
+if [[ "$install_launcher" == true ]]; then
+    echo "Installed launcher: $workbenches_root/scripts/wave-container-shell.sh"
+else
+    echo "Launcher unchanged: $workbenches_root/scripts/wave-container-shell.sh"
+fi
 echo "Updated widgets: $widgets_file"
 echo "Updated connections: $connections_file"
 echo "Projects widget root: $projects_root"
