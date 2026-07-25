@@ -305,12 +305,18 @@ ensure_container_history() {
         "mkdir -p '$container_history_dir' && touch '$container_history_file' && chown -R '${container_user}:${container_user}' '$container_history_dir'"
 }
 
+claude_launcher="$workbenches_root/base-image/files/claude-profile"
+codex_launcher="$workbenches_root/base-image/files/codex-profile"
+provider_launcher="$workbenches_root/base-image/files/provider-profile"
+pi_launcher="$workbenches_root/base-image/files/pi-profile"
+
 install_ai_profile_launchers() {
-    local claude_launcher="$workbenches_root/base-image/files/claude-profile"
-    local codex_launcher="$workbenches_root/base-image/files/codex-profile"
-    local provider_launcher="$workbenches_root/base-image/files/provider-profile"
-    local pi_launcher="$workbenches_root/base-image/files/pi-profile"
-    [[ -f "$claude_launcher" ]] || return 0
+    if [[ ! -f "$claude_launcher" \
+        && ! -f "$codex_launcher" \
+        && ! -f "$provider_launcher" \
+        && ! -f "$pi_launcher" ]]; then
+        return 0
+    fi
 
     local launchers=(
         "$claude_launcher"
@@ -332,9 +338,11 @@ install_ai_profile_launchers() {
     local installed_hash
     installed_hash="$(docker exec --user root "$container" sh -c "cat '$profile_launcher_marker' 2>/dev/null" || true)"
     if [[ "$installed_hash" != "$bundle_hash" ]]; then
-        docker cp "$claude_launcher" "$container:/usr/local/bin/claude-profile"
-        docker exec --user root "$container" sh -c \
-            'chmod 0755 /usr/local/bin/claude-profile && ln -sfn claude-profile /usr/local/bin/pclaude'
+        if [[ -f "$claude_launcher" ]]; then
+            docker cp "$claude_launcher" "$container:/usr/local/bin/claude-profile"
+            docker exec --user root "$container" sh -c \
+                'chmod 0755 /usr/local/bin/claude-profile && ln -sfn claude-profile /usr/local/bin/pclaude'
+        fi
         if [[ -f "$codex_launcher" ]]; then
             docker cp "$codex_launcher" "$container:/usr/local/bin/codex-profile"
             docker exec --user root "$container" sh -c \
@@ -359,21 +367,45 @@ install_ai_profile_launchers() {
 
     docker exec --user root "$container" sh -c \
         "mkdir -p '/home/${container_user}/.local/bin' && chown '${container_user}:${container_user}' '/home/${container_user}/.local' '/home/${container_user}/.local/bin'"
-    docker exec --user "$container_user" "$container" sh -c \
-        'ln -sfn /usr/local/bin/claude "$HOME/.local/bin/claude"'
+    if [[ -f "$claude_launcher" ]]; then
+        docker exec --user "$container_user" "$container" sh -c \
+            'ln -sfn /usr/local/bin/claude "$HOME/.local/bin/claude"'
+    fi
 }
 
 ensure_container_history
 install_ai_profile_launchers
 
 if [[ "$check_only" == true ]]; then
-    docker exec --user "$container_user" --env "HISTFILE=$container_history_file" --workdir "$workdir" "$container" "$shell_path" -lc \
-        'printf "%s\n" "wave-container-shell-ok"; whoami; pwd; test "$HISTFILE" = "$HOME/.workbenches-history/.zsh_history"; command -v claude-profile; command -v pclaude; command -v codex-profile; command -v pcodex; command -v ppi; command -v pgemini; command -v pgrok; command -v pglm; test -d "$HOME/.claude-profiles"; test -d "$HOME/.chatgpt-profiles"; test -d "$HOME/.pi-profiles"; test -d "$HOME/.gemini-profiles"; test -d "$HOME/.grok-profiles"; test -d "$HOME/.glm-profiles"'
+    docker exec --user "$container_user" \
+        --env "HISTFILE=$container_history_file" \
+        --env "WORKBENCHES_HAS_CLAUDE_LAUNCHER=$([[ -f "$claude_launcher" ]] && printf 1 || printf 0)" \
+        --env "WORKBENCHES_HAS_CODEX_LAUNCHER=$([[ -f "$codex_launcher" ]] && printf 1 || printf 0)" \
+        --env "WORKBENCHES_HAS_PROVIDER_LAUNCHER=$([[ -f "$provider_launcher" ]] && printf 1 || printf 0)" \
+        --env "WORKBENCHES_HAS_PI_LAUNCHER=$([[ -f "$pi_launcher" ]] && printf 1 || printf 0)" \
+        --workdir "$workdir" "$container" "$shell_path" -lc \
+        'set -e
+         printf "%s\n" "wave-container-shell-ok"
+         whoami
+         pwd
+         test "$HISTFILE" = "$HOME/.workbenches-history/.zsh_history"
+         if test "$WORKBENCHES_HAS_CLAUDE_LAUNCHER" = 1; then command -v claude-profile; command -v pclaude; fi
+         if test "$WORKBENCHES_HAS_CODEX_LAUNCHER" = 1; then command -v codex-profile; command -v pcodex; fi
+         if test "$WORKBENCHES_HAS_PROVIDER_LAUNCHER" = 1; then command -v pgemini; command -v pgrok; command -v pglm; fi
+         if test "$WORKBENCHES_HAS_PI_LAUNCHER" = 1; then command -v ppi; fi
+         test -d "$HOME/.claude-profiles"
+         test -d "$HOME/.chatgpt-profiles"
+         test -d "$HOME/.pi-profiles"
+         test -d "$HOME/.gemini-profiles"
+         test -d "$HOME/.grok-profiles"
+         test -d "$HOME/.glm-profiles"'
     exit 0
 fi
 
 set_wave_title() {
-    printf '\033]0;%s\007' "$block_title"
+    if [[ -t 1 ]]; then
+        printf '\033]0;%s\007' "$block_title"
+    fi
 
     if command -v wsh >/dev/null 2>&1; then
         wsh setmeta -b this "frame:title=$block_title" "frame:text=$block_title" >/dev/null 2>&1 || true
