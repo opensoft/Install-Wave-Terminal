@@ -54,6 +54,7 @@ its own Wave configuration.
 | `pyBench` | `py-bench` | `devBenches/pyBench` | Python development container |
 | `flutterBench` | `flutter-bench` | `devBenches/flutterBench` | Flutter container; requires the bench to be installed |
 | `C++Bench` | `cpp-bench` | `devBenches/cppBench` | C++ development container with Powerlevel10k shell config |
+| `rustBench` | `rust-bench` | `devBenches/rustBench` | Rust development, cross-compilation, and WebAssembly container |
 | `cloudBench` | `cloud-bench` | `sysBenches/cloudBench` | Cloud tooling container with home, Azure config, and Docker socket mounts |
 
 ## How It Works

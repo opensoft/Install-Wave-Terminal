@@ -103,6 +103,19 @@ The C++ container needs the shell config mounts for Powerlevel10k:
 The launcher checks for the required mounts and recreates the container if an
 older compose-only container is missing them.
 
+### rustBench
+
+- Widget key: `rustBench`
+- Label: `rustBench`
+- Icon: `brands@rust`
+- Container: `rust-bench`
+- Bench directory: `devBenches/rustBench`
+- Compose file: `devBenches/rustBench/.devcontainer/docker-compose.yml`
+
+The Rust widget follows the same container-shell contract as `pyBench`. It
+starts or repairs the personalized Rust bench, then opens an interactive `zsh`
+shell with the shared workBenches mounts.
+
 ### cloudBench
 
 - Widget key: `cloudBench`
@@ -149,6 +162,7 @@ Then test the launcher directly:
 
 ```bash
 ~/projects/workBenches/scripts/wave-container-shell.sh --check pyBench
+~/projects/workBenches/scripts/wave-container-shell.sh --check rustBench
 ```
 
 ### Powerlevel10k Setup Appears
