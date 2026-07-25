@@ -94,6 +94,10 @@ recreates it directly with the Wave Docker Compose override. This avoids a known
 Dev Containers CLI hang where the container starts but the CLI never returns, so
 Wave never reaches the final interactive shell.
 
+For a running container, the launcher displays startup status immediately and
+skips profile-launcher copies when the previously installed content hash still
+matches.
+
 The fallback override mounts shell and agent configuration from the WSL home
 directory so the container shell keeps the same `zsh`, Oh My Zsh, Powerlevel10k,
 Git, GitHub CLI, SSH, and agent settings.

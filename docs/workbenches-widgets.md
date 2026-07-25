@@ -26,6 +26,10 @@ shell with `wave-container-shell.sh`. The launcher makes sure the Docker
 container exists, starts it if needed, and runs an interactive login `zsh` shell
 inside the container.
 
+The launcher prints an `Opening ...` status immediately. Shared AI profile
+launchers are synchronized only when their combined content hash changes, so a
+healthy running bench is not delayed by repeated `docker cp` operations.
+
 The widget title is set in two ways:
 
 - terminal OSC title escape
