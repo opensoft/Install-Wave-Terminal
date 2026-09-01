@@ -178,13 +178,14 @@ docker inspect cpp-bench --format '{{range .Mounts}}{{println .Destination}}{{en
 ```
 
 You should see either the specific shell config mounts or a parent home mount.
-If not, run:
+If the container is stopped, the launcher repairs missing mounts automatically.
+If it is running, a normal widget launch preserves it and prints a warning so
+active work is not disrupted. After stopping or saving that work, request the
+recreation explicitly:
 
 ```bash
-~/projects/workBenches/scripts/wave-container-shell.sh --check C++Bench
+~/projects/workBenches/scripts/wave-container-shell.sh --repair --check C++Bench
 ```
-
-The launcher will recreate a container that is missing required mounts.
 
 ### Dev Containers CLI Fails Or Hangs
 
