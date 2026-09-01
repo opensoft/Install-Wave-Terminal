@@ -184,7 +184,7 @@ active work is not disrupted. After stopping or saving that work, request the
 recreation explicitly:
 
 ```bash
-~/projects/workBenches/scripts/wave-container-shell.sh --repair --check C++Bench
+~/projects/workBenches/scripts/wave-container-shell.sh --repair --check cpp-bench
 ```
 
 ### Dev Containers CLI Fails Or Hangs
