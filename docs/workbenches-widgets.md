@@ -76,6 +76,18 @@ the WSL projects directory instead of the Windows filesystem.
 - Bench directory: `devBenches/pyBench`
 - Compose file: `devBenches/pyBench/.devcontainer/docker-compose.yml`
 
+### dotNetBench
+
+- Widget key: `dotNetBench`
+- Label: `dotNetBench`
+- Icon: `brands@microsoft`
+- Container: `dotnet-bench`
+- Bench directory: `devBenches/dotNetBench`
+- Compose file: `devBenches/dotNetBench/.devcontainer/docker-compose.yml`
+
+The widget starts the personalized `dotnet-bench:<user>` container when needed,
+then opens an interactive `zsh` shell in `/workspace`.
+
 ### flutterBench
 
 - Widget key: `flutterBench`
@@ -166,6 +178,7 @@ Then test the launcher directly:
 
 ```bash
 ~/projects/workBenches/scripts/wave-container-shell.sh --check pyBench
+~/projects/workBenches/scripts/wave-container-shell.sh --check dotNetBench
 ~/projects/workBenches/scripts/wave-container-shell.sh --check rustBench
 ```
 

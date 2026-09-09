@@ -15,34 +15,83 @@ check_only=false
 repair_requested=false
 profile_launcher_marker="/usr/local/share/workbenches/profile-launchers.sha256"
 bench_dir="$workbenches_root/devBenches/pyBench"
+bench_dir_resolved=false
 compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+compose_file_explicit=false
+wslg_root="${WAVE_WSLG_ROOT:-/mnt/wslg}"
+base_image="py-bench:latest"
+layer3_chown=""
+compose_project="dev-benches"
 
 resolve_bench_defaults() {
     case "$container" in
         pyBench|py-bench)
             container="py-bench"
             bench_dir="$workbenches_root/devBenches/pyBench"
-            compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            bench_dir_resolved=true
+            [[ "$compose_file_explicit" == true ]] || compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            base_image="py-bench:latest"
+            layer3_chown=""
+            compose_project="dev-benches"
+            ;;
+        dotNetBench|dotnetBench|dotnet-bench)
+            container="dotnet-bench"
+            bench_dir="$workbenches_root/devBenches/dotNetBench"
+            bench_dir_resolved=true
+            [[ "$compose_file_explicit" == true ]] || compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            base_image="dotnet-bench:latest"
+            layer3_chown=""
+            compose_project="dev-benches"
             ;;
         cppBench|C++Bench|c++Bench|cpp-bench)
             container="cpp-bench"
             bench_dir="$workbenches_root/devBenches/cppBench"
-            compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            bench_dir_resolved=true
+            [[ "$compose_file_explicit" == true ]] || compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            base_image="cpp-bench:latest"
+            layer3_chown="/opt/vcpkg"
+            compose_project="dev-benches"
             ;;
         rustBench|rust-bench)
             container="rust-bench"
             bench_dir="$workbenches_root/devBenches/rustBench"
-            compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            bench_dir_resolved=true
+            [[ "$compose_file_explicit" == true ]] || compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            base_image="rust-bench:latest"
+            layer3_chown="/opt/rust"
+            compose_project="dev-benches"
             ;;
         flutterBench|flutter-bench)
             container="flutter-bench"
             bench_dir="$workbenches_root/devBenches/flutterBench"
-            compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            bench_dir_resolved=true
+            [[ "$compose_file_explicit" == true ]] || compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            base_image="flutter-bench:latest"
+            layer3_chown="/opt/flutter /opt/flutter-3.27.0 /opt/android-sdk"
+            compose_project="dev-benches"
             ;;
         cloudBench|cloud-bench)
             container="cloud-bench"
             bench_dir="$workbenches_root/sysBenches/cloudBench/devcontainer.example"
-            compose_file="$bench_dir/docker-compose.yml"
+            bench_dir_resolved=true
+            [[ "$compose_file_explicit" == true ]] || compose_file="$bench_dir/docker-compose.yml"
+            base_image="cloud-bench:latest"
+            layer3_chown=""
+            compose_project="sys-benches"
+            ;;
+        365Bench|m365Bench|m365-bench)
+            container="m365-bench"
+            bench_dir="$workbenches_root/sysBenches/365Bench"
+            bench_dir_resolved=true
+            [[ "$compose_file_explicit" == true ]] || compose_file="$bench_dir/.devcontainer/docker-compose.yml"
+            base_image="m365-bench:latest"
+            layer3_chown=""
+            compose_project="sys-benches"
+            ;;
+        *)
+            base_image="${container}:latest"
+            layer3_chown=""
+            compose_project=""
             ;;
     esac
 }
@@ -67,7 +116,7 @@ EOF
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --workbenches-root) workbenches_root="$2"; shift 2 ;;
-        --compose-file) compose_file="$2"; shift 2 ;;
+        --compose-file) compose_file="$2"; compose_file_explicit=true; shift 2 ;;
         --user) container_user="$2"; shift 2 ;;
         --workdir) workdir="$2"; shift 2 ;;
         --shell) shell_path="$2"; shift 2 ;;
@@ -94,6 +143,24 @@ if ! command -v docker >/dev/null 2>&1; then
     echo "docker was not found in this WSL distro." >&2
     exit 1
 fi
+
+prepare_script="$workbenches_root/scripts/prepare-bench-start.sh"
+if [[ ! -x "$prepare_script" ]]; then
+    echo "Safe bench startup helper is missing or not executable: $prepare_script" >&2
+    exit 1
+fi
+
+prepare_args=(
+    --container "$container"
+    --base "$base_image"
+    --user "$container_user"
+    --project "$compose_project"
+    --service "$container"
+)
+if [[ -n "$layer3_chown" ]]; then
+    prepare_args+=(--chown "$layer3_chown")
+fi
+"$prepare_script" "${prepare_args[@]}"
 
 if [[ "$check_only" != true ]]; then
     if [[ -t 1 ]]; then
@@ -138,6 +205,7 @@ ensure_host_sources() {
         "$home_dir/.claude-profiles" \
         "$home_dir/.codex" \
         "$home_dir/.chatgpt-profiles" \
+        "$home_dir/.opencode-profiles" \
         "$home_dir/.gemini-profiles" \
         "$home_dir/.grok-profiles" \
         "$home_dir/.glm-profiles" \
@@ -145,6 +213,9 @@ ensure_host_sources() {
         "$home_dir/.agents" \
         "$home_dir/.pi" \
         "$home_dir/.pi-profiles" \
+        "$home_dir/.config/workbenches" \
+        "$home_dir/.local/lib/workbenches" \
+        "$home_dir/.local/state/workbenches" \
         "$home_dir/.config/sonarqube" \
         "$home_dir/.gemini" \
         "$home_dir/.grok" \
@@ -187,6 +258,10 @@ services:
       - ${home_dir}/.claude-profiles:/home/${container_user}/.claude-profiles:cached
       - ${home_dir}/.codex:/home/${container_user}/.codex:cached
       - ${home_dir}/.chatgpt-profiles:/home/${container_user}/.chatgpt-profiles:cached
+      - ${home_dir}/.opencode-profiles:/home/${container_user}/.opencode-profiles:cached
+      - ${home_dir}/.config/workbenches:/home/${container_user}/.config/workbenches:ro
+      - ${home_dir}/.local/lib/workbenches:/home/${container_user}/.local/lib/workbenches:ro
+      - ${home_dir}/.local/state/workbenches:/home/${container_user}/.local/state/workbenches:cached
       - ${home_dir}/.gemini-profiles:/home/${container_user}/.gemini-profiles:cached
       - ${home_dir}/.grok-profiles:/home/${container_user}/.grok-profiles:cached
       - ${home_dir}/.glm-profiles:/home/${container_user}/.glm-profiles:cached
@@ -219,17 +294,32 @@ create_with_compose() {
         exit 1
     fi
 
-    local compose_dir
+    local compose_dir compose_bench_dir
     compose_dir="$(dirname "$compose_file")"
-    bench_dir="$(dirname "$compose_dir")"
-    if [[ ! -f "$compose_dir/.env" && -f "$bench_dir/.env" ]]; then
-        cp "$bench_dir/.env" "$compose_dir/.env"
+    if [[ "$bench_dir_resolved" == true ]]; then
+        compose_bench_dir="$bench_dir"
+    else
+        compose_bench_dir="$(dirname "$compose_dir")"
+    fi
+    if [[ ! -f "$compose_dir/.env" && -f "$compose_bench_dir/.env" ]]; then
+        cp "$compose_bench_dir/.env" "$compose_dir/.env"
     fi
 
     local override_file
+    local compose_args
     override_file="$(write_wave_compose_override)"
+    compose_args=(-f "$compose_file")
+    if [[ "$container" == "rust-bench" && -d "$wslg_root" ]]; then
+        local wslg_compose_file="$bench_dir/.devcontainer/docker-compose.wslg.yml"
+        if [[ ! -f "$wslg_compose_file" ]]; then
+            echo "rustBench WSLg override is missing: $wslg_compose_file" >&2
+            exit 1
+        fi
+        compose_args+=(-f "$wslg_compose_file")
+    fi
+    compose_args+=(-f "$override_file")
     echo "Creating $container with docker compose..."
-    docker compose -f "$compose_file" -f "$override_file" up -d "$container"
+    docker compose "${compose_args[@]}" up -d "$container"
 }
 
 recreate_with_compose() {
@@ -275,11 +365,21 @@ container_missing_required_mounts() {
         "/home/${container_user}/.p10k.zsh"
         "/home/${container_user}/.claude-profiles"
         "/home/${container_user}/.chatgpt-profiles"
+        "/home/${container_user}/.opencode-profiles"
+        "/home/${container_user}/.config/workbenches"
+        "/home/${container_user}/.local/lib/workbenches"
+        "/home/${container_user}/.local/state/workbenches"
         "/home/${container_user}/.pi-profiles"
         "/home/${container_user}/.gemini-profiles"
         "/home/${container_user}/.grok-profiles"
         "/home/${container_user}/.glm-profiles"
     )
+    if [[ "$container" == "rust-bench" ]]; then
+        required_mounts+=("/home/${container_user}/.cargo")
+        if [[ -d /mnt/wslg ]]; then
+            required_mounts+=("/mnt/wslg")
+        fi
+    fi
 
     local mount
     local destination
@@ -308,7 +408,9 @@ fi
 if [[ "$repair_requested" == true && "$container_exists" == true ]]; then
     recreate_with_compose
 elif [[ "$container_exists" != true ]]; then
-    if [[ -f "$bench_dir/.devcontainer/devcontainer.json" ]]; then
+    if [[ "$compose_file_explicit" == true ]]; then
+        create_with_compose
+    elif [[ -f "$bench_dir/.devcontainer/devcontainer.json" ]]; then
         echo "Creating $container with Dev Containers CLI..."
         if ! run_devcontainer_up; then
             echo "Dev Containers CLI did not complete; creating $container with Wave compose mounts." >&2
@@ -332,14 +434,24 @@ ensure_container_history() {
         "mkdir -p '$container_history_dir' && touch '$container_history_file' && chown -R '${container_user}:${container_user}' '$container_history_dir'"
 }
 
+ensure_user_cargo_cache() {
+    [[ "$container" == "rust-bench" ]] || return 0
+    docker exec --user root "$container" sh -c \
+        "mkdir -p '/home/${container_user}/.cargo' && chown -R '${container_user}:${container_user}' '/home/${container_user}/.cargo'"
+}
+
 claude_launcher="$workbenches_root/base-image/files/claude-profile"
 codex_launcher="$workbenches_root/base-image/files/codex-profile"
+opencode_launcher="$workbenches_root/base-image/files/opencode-profile"
+mcp_sync_launcher="$workbenches_root/base-image/files/workbenches-mcp-sync"
 provider_launcher="$workbenches_root/base-image/files/provider-profile"
 pi_launcher="$workbenches_root/base-image/files/pi-profile"
 
 install_ai_profile_launchers() {
     if [[ ! -f "$claude_launcher" \
         && ! -f "$codex_launcher" \
+        && ! -f "$opencode_launcher" \
+        && ! -f "$mcp_sync_launcher" \
         && ! -f "$provider_launcher" \
         && ! -f "$pi_launcher" ]]; then
         return 0
@@ -348,6 +460,8 @@ install_ai_profile_launchers() {
     local launchers=(
         "$claude_launcher"
         "$codex_launcher"
+        "$opencode_launcher"
+        "$mcp_sync_launcher"
         "$provider_launcher"
         "$pi_launcher"
     )
@@ -375,6 +489,16 @@ install_ai_profile_launchers() {
             docker exec --user root "$container" sh -c \
                 'chmod 0755 /usr/local/bin/codex-profile && ln -sfn codex-profile /usr/local/bin/pcodex'
         fi
+        if [[ -f "$opencode_launcher" ]]; then
+            docker cp "$opencode_launcher" "$container:/usr/local/bin/opencode-profile"
+            docker exec --user root "$container" sh -c \
+                'chmod 0755 /usr/local/bin/opencode-profile && ln -sfn opencode-profile /usr/local/bin/popencode'
+        fi
+        if [[ -f "$mcp_sync_launcher" ]]; then
+            docker cp "$mcp_sync_launcher" "$container:/usr/local/bin/workbenches-mcp-sync"
+            docker exec --user root "$container" sh -c \
+                'chmod 0755 /usr/local/bin/workbenches-mcp-sync'
+        fi
         if [[ -f "$provider_launcher" ]]; then
             docker cp "$provider_launcher" "$container:/usr/local/bin/provider-profile"
             docker exec --user root "$container" sh -c \
@@ -393,13 +517,10 @@ install_ai_profile_launchers() {
     fi
 
     docker exec --user root "$container" sh -c \
-        "mkdir -p '/home/${container_user}/.local/bin' && chown '${container_user}:${container_user}' '/home/${container_user}/.local' '/home/${container_user}/.local/bin'"
-    if [[ -f "$claude_launcher" ]]; then
-        docker exec --user "$container_user" "$container" sh -c \
-            'ln -sfn /usr/local/bin/claude "$HOME/.local/bin/claude"'
-    fi
+        "mkdir -p '/home/${container_user}/.local/bin' '/home/${container_user}/.local/state' && chown '${container_user}:${container_user}' '/home/${container_user}/.local' '/home/${container_user}/.local/bin' '/home/${container_user}/.local/state'"
 }
 
+ensure_user_cargo_cache
 ensure_container_history
 install_ai_profile_launchers
 
@@ -408,6 +529,7 @@ if [[ "$check_only" == true ]]; then
         --env "HISTFILE=$container_history_file" \
         --env "WORKBENCHES_HAS_CLAUDE_LAUNCHER=$([[ -f "$claude_launcher" ]] && printf 1 || printf 0)" \
         --env "WORKBENCHES_HAS_CODEX_LAUNCHER=$([[ -f "$codex_launcher" ]] && printf 1 || printf 0)" \
+        --env "WORKBENCHES_HAS_OPENCODE_LAUNCHER=$([[ -f "$opencode_launcher" ]] && printf 1 || printf 0)" \
         --env "WORKBENCHES_HAS_PROVIDER_LAUNCHER=$([[ -f "$provider_launcher" ]] && printf 1 || printf 0)" \
         --env "WORKBENCHES_HAS_PI_LAUNCHER=$([[ -f "$pi_launcher" ]] && printf 1 || printf 0)" \
         --workdir "$workdir" "$container" "$shell_path" -lc \
@@ -418,10 +540,13 @@ if [[ "$check_only" == true ]]; then
          test "$HISTFILE" = "$HOME/.workbenches-history/.zsh_history"
          if test "$WORKBENCHES_HAS_CLAUDE_LAUNCHER" = 1; then command -v claude-profile; command -v pclaude; fi
          if test "$WORKBENCHES_HAS_CODEX_LAUNCHER" = 1; then command -v codex-profile; command -v pcodex; fi
+         if test "$WORKBENCHES_HAS_OPENCODE_LAUNCHER" = 1; then command -v opencode-profile; command -v popencode; test -f "$HOME/.config/workbenches/opencode-profiles.json"; test -d "$HOME/.opencode-profiles"; fi
+         if test "$WORKBENCHES_HAS_CODEX_LAUNCHER" = 1; then command -v workbenches-mcp-sync; fi
          if test "$WORKBENCHES_HAS_PROVIDER_LAUNCHER" = 1; then command -v pgemini; command -v pgrok; command -v pglm; fi
          if test "$WORKBENCHES_HAS_PI_LAUNCHER" = 1; then command -v ppi; fi
          test -d "$HOME/.claude-profiles"
          test -d "$HOME/.chatgpt-profiles"
+         test -d "$HOME/.opencode-profiles"
          test -d "$HOME/.pi-profiles"
          test -d "$HOME/.gemini-profiles"
          test -d "$HOME/.grok-profiles"
