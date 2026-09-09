@@ -45,6 +45,22 @@
       }
     }
   },
+  "dotNetBench": {
+    "icon": "brands@microsoft",
+    "label": "dotNetBench",
+    "description": "Open the dotnet-bench container shell",
+    "blockdef": {
+      "meta": {
+        "view": "term",
+        "controller": "shell",
+        "frame:title": "dotNetBench",
+        "connection": "__WSL_CONNECTION__",
+        "term:fontsize": __WAVE_WIDGET_FONT_SIZE__,
+        "cmd:cwd": "__WORKBENCHES_ROOT__",
+        "cmd:initscript": "exec __WORKBENCHES_ROOT__/scripts/wave-container-shell.sh --title dotNetBench dotNetBench"
+      }
+    }
+  },
   "flutterBench": {
     "icon": "brands@flutter",
     "label": "flutterBench",

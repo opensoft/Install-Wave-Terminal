@@ -52,6 +52,7 @@ its own Wave configuration.
 | `terminal` | n/a | n/a | Built-in Wave terminal override; opens `wsl://Ubuntu-24.04` by default |
 | `projects` | n/a | `$HOME/projects` | Files widget for the WSL projects directory |
 | `pyBench` | `py-bench` | `devBenches/pyBench` | Python development container |
+| `dotNetBench` | `dotnet-bench` | `devBenches/dotNetBench` | .NET development container |
 | `flutterBench` | `flutter-bench` | `devBenches/flutterBench` | Flutter container; requires the bench to be installed |
 | `C++Bench` | `cpp-bench` | `devBenches/cppBench` | C++ development container with Powerlevel10k shell config |
 | `rustBench` | `rust-bench` | `devBenches/rustBench` | Rust development, cross-compilation, and WebAssembly container |
