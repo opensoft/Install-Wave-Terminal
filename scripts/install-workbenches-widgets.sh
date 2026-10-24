@@ -5,7 +5,24 @@ set -euo pipefail
 
 home_dir="${HOME:?HOME is required}"
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-workbenches_root="${WORKBENCHES_ROOT:-$home_dir/projects/workBenches}"
+
+discover_workbenches_root() {
+    local candidate
+    for candidate in \
+        "$home_dir/projects/openBenches" \
+        "$home_dir/Projects/openBenches" \
+        "$home_dir/projects/workBenches" \
+        "$home_dir/Projects/workBenches"; do
+        if [[ -d "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    printf '%s\n' "$home_dir/projects/workBenches"
+}
+
+workbenches_root="${WORKBENCHES_ROOT:-$(discover_workbenches_root)}"
 projects_root="${PROJECTS_ROOT:-$home_dir/projects}"
 wsl_connection="${WAVE_WSL_CONNECTION:-wsl://Ubuntu-24.04}"
 font_size="${WAVE_WIDGET_FONT_SIZE:-16}"
