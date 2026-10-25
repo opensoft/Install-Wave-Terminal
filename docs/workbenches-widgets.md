@@ -63,9 +63,8 @@ shell.
 - Font size: `16`
 
 The installer renders the `projects` widget with the selected
-`--wsl-connection` and `--projects-root`. On Brett's workstation this resolves
-to `wsl://Ubuntu-24.04` and `/home/brett/projects`, so the files widget browses
-the WSL projects directory instead of the Windows filesystem.
+`--wsl-connection` and `--projects-root`. By default, the files widget browses
+`$HOME/projects` in WSL instead of the Windows filesystem.
 
 ### pyBench
 

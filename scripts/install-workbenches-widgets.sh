@@ -5,7 +5,24 @@ set -euo pipefail
 
 home_dir="${HOME:?HOME is required}"
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-workbenches_root="${WORKBENCHES_ROOT:-$home_dir/projects/workBenches}"
+
+discover_workbenches_root() {
+    local candidate
+    for candidate in \
+        "$home_dir/projects/openBenches" \
+        "$home_dir/Projects/openBenches" \
+        "$home_dir/projects/workBenches" \
+        "$home_dir/Projects/workBenches"; do
+        if [[ -f "$candidate/config/bench-config.json" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    printf '%s\n' "$home_dir/projects/workBenches"
+}
+
+workbenches_root="${WORKBENCHES_ROOT:-$(discover_workbenches_root)}"
 projects_root="${PROJECTS_ROOT:-$home_dir/projects}"
 wsl_connection="${WAVE_WSL_CONNECTION:-wsl://Ubuntu-24.04}"
 font_size="${WAVE_WIDGET_FONT_SIZE:-16}"
@@ -93,6 +110,7 @@ connections_file="$waveterm_config_dir/connections.json"
 python3 - "$template_file" "$widgets_file" "$connections_file" "$workbenches_root" "$projects_root" "$wsl_connection" "$font_size" <<'PY'
 import json
 import pathlib
+import shlex
 import sys
 
 template_path, widgets_path, connections_path, workbenches_root, projects_root, wsl_connection, font_size = sys.argv[1:]
@@ -111,7 +129,8 @@ def read_json_object(path_text):
     return path, value
 
 template_text = pathlib.Path(template_path).read_text(encoding="utf-8")
-template_text = template_text.replace("__WORKBENCHES_ROOT__", workbenches_root)
+template_text = template_text.replace("__WORKBENCHES_ROOT__", json.dumps(workbenches_root)[1:-1])
+template_text = template_text.replace("__WORKBENCHES_ROOT_SHELL__", json.dumps(shlex.quote(workbenches_root))[1:-1])
 template_text = template_text.replace("__PROJECTS_ROOT__", projects_root)
 template_text = template_text.replace("__WSL_CONNECTION__", wsl_connection)
 template_text = template_text.replace("__WAVE_WIDGET_FONT_SIZE__", font_size)

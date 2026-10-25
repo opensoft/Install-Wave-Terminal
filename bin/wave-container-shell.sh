@@ -5,7 +5,24 @@ set -euo pipefail
 
 home_dir="${HOME:?HOME is required}"
 default_user="$(id -un 2>/dev/null || printf 'user')"
-workbenches_root="${WORKBENCHES_ROOT:-$home_dir/projects/workBenches}"
+
+discover_workbenches_root() {
+    local candidate
+    for candidate in \
+        "$home_dir/projects/openBenches" \
+        "$home_dir/Projects/openBenches" \
+        "$home_dir/projects/workBenches" \
+        "$home_dir/Projects/workBenches"; do
+        if [[ -f "$candidate/config/bench-config.json" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    printf '%s\n' "$home_dir/projects/workBenches"
+}
+
+workbenches_root="${WORKBENCHES_ROOT:-$(discover_workbenches_root)}"
 container="py-bench"
 container_user="${USER:-$default_user}"
 workdir="/workspace"
