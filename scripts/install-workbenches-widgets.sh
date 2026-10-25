@@ -129,8 +129,8 @@ def read_json_object(path_text):
     return path, value
 
 template_text = pathlib.Path(template_path).read_text(encoding="utf-8")
-template_text = template_text.replace("__WORKBENCHES_ROOT__", workbenches_root)
-template_text = template_text.replace("__WORKBENCHES_ROOT_SHELL__", shlex.quote(workbenches_root))
+template_text = template_text.replace("__WORKBENCHES_ROOT__", json.dumps(workbenches_root)[1:-1])
+template_text = template_text.replace("__WORKBENCHES_ROOT_SHELL__", json.dumps(shlex.quote(workbenches_root))[1:-1])
 template_text = template_text.replace("__PROJECTS_ROOT__", projects_root)
 template_text = template_text.replace("__WSL_CONNECTION__", wsl_connection)
 template_text = template_text.replace("__WAVE_WIDGET_FONT_SIZE__", font_size)

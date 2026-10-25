@@ -284,6 +284,7 @@ run_discovery_case new-only-uppercase new-only-uppercase auto
 run_discovery_case split-roots split-roots auto
 run_discovery_case explicit-root both-valid cli
 run_discovery_case "explicit root with spaces" both-valid cli
+run_discovery_case "explicit root O'Brien" both-valid cli
 run_discovery_case environment-root both-valid env
 
 no_root="$suite_root/no-checkout"
