@@ -16,7 +16,8 @@ fail() {
 
 make_checkout() {
     local root="$1"
-    mkdir -p "$root/base-image/files"
+    mkdir -p "$root/base-image/files" "$root/config"
+    printf '{}\n' > "$root/config/bench-config.json"
     printf '# fixture launcher for %s\n' "$root" > "$root/base-image/files/claude-profile"
 }
 
@@ -98,6 +99,32 @@ invoke_launcher() {
     esac
 }
 
+invoke_generated_widget() {
+    local home="$1"
+    local config="$2"
+    local docker_log="$3"
+    local cache_dir="$4"
+    local widget_command
+    widget_command="$(
+        python3 - "$config/widgets.json" <<'PY'
+import json
+import pathlib
+import sys
+
+widgets = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+print(widgets["pyBench"]["blockdef"]["meta"]["cmd:initscript"])
+PY
+    )"
+
+    env -u WORKBENCHES_ROOT \
+        HOME="$home" \
+        USER=tester \
+        PATH="$mock_bin:$PATH" \
+        MOCK_DOCKER_LOG="$docker_log" \
+        WAVE_WORKBENCHES_COMPOSE_CACHE="$cache_dir" \
+        bash -c "$widget_command"
+}
+
 validate_widgets() {
     local widgets="$1"
     local connections="$2"
@@ -107,6 +134,7 @@ validate_widgets() {
     python3 - "$widgets" "$connections" "$expected_root" "$expected_projects" <<'PY'
 import json
 import pathlib
+import shlex
 import sys
 
 widgets_path, connections_path, expected_root, expected_projects = sys.argv[1:]
@@ -116,6 +144,7 @@ connections = json.loads(pathlib.Path(connections_path).read_text(encoding="utf-
 
 for placeholder in (
     "__WORKBENCHES_ROOT__",
+    "__WORKBENCHES_ROOT_SHELL__",
     "__PROJECTS_ROOT__",
     "__WSL_CONNECTION__",
     "__WAVE_WIDGET_FONT_SIZE__",
@@ -125,8 +154,14 @@ for placeholder in (
 for name in ("pyBench", "flutterBench", "cppBench", "rustBench", "cloudBench"):
     meta = widgets[name]["blockdef"]["meta"]
     assert meta["cmd:cwd"] == expected_root, (name, meta["cmd:cwd"], expected_root)
-    expected_prefix = f"exec {expected_root}/scripts/wave-container-shell.sh "
-    assert meta["cmd:initscript"].startswith(expected_prefix), (name, meta["cmd:initscript"])
+    command = shlex.split(meta["cmd:initscript"])
+    expected_prefix = [
+        "exec",
+        f"{expected_root}/scripts/wave-container-shell.sh",
+        "--workbenches-root",
+        expected_root,
+    ]
+    assert command[:4] == expected_prefix, (name, command, expected_prefix)
     assert meta["connection"] == "wsl://fixture"
     assert meta["term:fontsize"] == 16
 
@@ -155,7 +190,12 @@ run_discovery_case() {
             make_checkout "$fake_home/projects/openBenches"
             expected_root="$fake_home/projects/openBenches"
             ;;
-        both-present)
+        invalid-new)
+            mkdir -p "$fake_home/projects/openBenches"
+            make_checkout "$fake_home/projects/workBenches"
+            expected_root="$fake_home/projects/workBenches"
+            ;;
+        both-valid)
             make_checkout "$fake_home/projects/openBenches"
             make_checkout "$fake_home/projects/workBenches"
             expected_root="$fake_home/projects/openBenches"
@@ -200,13 +240,19 @@ run_discovery_case() {
     bash -n "$expected_root/scripts/wave-container-shell.sh"
 
     local docker_log="$case_root/docker.log"
+    local expected_copy="cp $expected_root/base-image/files/claude-profile py-bench:/usr/local/bin/claude-profile"
+    : > "$docker_log"
+    if ! output="$(invoke_generated_widget "$fake_home" "$wave_config" "$docker_log" "$case_root/compose-cache" 2>&1)"; then
+        echo "$output" >&2
+        fail "$name generated widget invocation failed"
+    fi
+    grep -Fqx -- "$expected_copy" "$docker_log" || fail "$name generated widget did not use the installer-selected checkout"
+
     : > "$docker_log"
     if ! output="$(invoke_launcher "$mode" "$fake_home" "$explicit_root" "$docker_log" "$case_root/compose-cache" 2>&1)"; then
         echo "$output" >&2
         fail "$name launcher invocation failed"
     fi
-
-    local expected_copy="cp $expected_root/base-image/files/claude-profile py-bench:/usr/local/bin/claude-profile"
     grep -Fqx -- "$expected_copy" "$docker_log" || fail "$name launcher did not use the selected checkout"
 }
 
@@ -231,12 +277,14 @@ bash -n "$launcher"
 
 run_discovery_case old-only old-only auto
 run_discovery_case new-only new-only auto
-run_discovery_case both-present both-present auto
+run_discovery_case invalid-new invalid-new auto
+run_discovery_case both-valid both-valid auto
 run_discovery_case old-only-uppercase old-only-uppercase auto
 run_discovery_case new-only-uppercase new-only-uppercase auto
 run_discovery_case split-roots split-roots auto
-run_discovery_case explicit-root both-present cli
-run_discovery_case environment-root both-present env
+run_discovery_case explicit-root both-valid cli
+run_discovery_case "explicit root with spaces" both-valid cli
+run_discovery_case environment-root both-valid env
 
 no_root="$suite_root/no-checkout"
 mkdir -p "$no_root/home"

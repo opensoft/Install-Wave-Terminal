@@ -34,17 +34,18 @@ The installer:
 ### Checkout Discovery
 
 When neither `WORKBENCHES_ROOT` nor `--workbenches-root` selects a checkout, the
-installer and launcher check these paths in order and select only the first one
-that exists:
+installer and launcher check these paths in order and select only the first
+valid checkout. A discovery candidate is valid when it contains
+`config/bench-config.json`; incomplete directories are skipped:
 
 1. `~/projects/openBenches`
 2. `~/Projects/openBenches`
 3. `~/projects/workBenches`
 4. `~/Projects/workBenches`
 
-If none exists, the default remains `~/projects/workBenches`. `WORKBENCHES_ROOT`
-takes precedence over discovery, and an explicit `--workbenches-root` takes
-precedence over both.
+If no valid checkout is found, the default remains `~/projects/workBenches`.
+`WORKBENCHES_ROOT` takes precedence over discovery, and an explicit
+`--workbenches-root` takes precedence over both.
 
 On WSL, the installer writes to the Windows user's Wave config directory, for
 example `/mnt/c/Users/<you>/.config/waveterm/widgets.json`. On native Linux, it

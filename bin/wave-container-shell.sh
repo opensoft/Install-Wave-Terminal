@@ -13,7 +13,7 @@ discover_workbenches_root() {
         "$home_dir/Projects/openBenches" \
         "$home_dir/projects/workBenches" \
         "$home_dir/Projects/workBenches"; do
-        if [[ -d "$candidate" ]]; then
+        if [[ -f "$candidate/config/bench-config.json" ]]; then
             printf '%s\n' "$candidate"
             return 0
         fi
